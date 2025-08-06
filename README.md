@@ -4,108 +4,114 @@
 
 This repository provides a framework for exploring a key question in modern AI: **Can a Large Language Model (LLM) effectively collaborate with classical algorithms to solve a complex optimization problem?**
 
-We use the well-known Traveling Salesperson Problem (TSP) as a testbed. The system implements a hybrid, two-stage agentic architecture to find a solution for the berlin52 benchmark problem, where the optimal tour is known.
+We use the well-known Traveling Salesperson Problem (TSP) as a testbed. The system implements a configurable, hybrid, two-stage agentic architecture to find solutions for the berlin52 benchmark problem. This framework is designed to produce replicable benchmarks, demonstrating that the success of algorithm-AI collaboration is highly dependent on the LLM's capability and the scale of the computational effort.
 
 ## Core Concept: A Hybrid Agentic Architecture
 
-The solver does not rely on a single method. Instead, it orchestrates a collaboration between two different types of agents in a two-stage process:
+The solver orchestrates a collaboration between two different types of agents in a two-stage process:
 
 ### Stage 1: Classical Optimization (The Workhorses)
-A pool of independent Genetic Algorithm (GA) workers runs concurrently. Each worker evolves a population of solutions over hundreds of generations, applying principles of selection, crossover, and mutation. This stage performs the heavy computational lifting to find a strong, but not necessarily perfect, candidate solution.
+A configurable pool of independent Genetic Algorithm (GA) workers runs concurrently. Each worker evolves a population of solutions, applying selection, crossover, and mutation. This stage performs the heavy computational lifting to find a strong candidate solution.
 
 ### Stage 2: LLM Refinement (The Heuristic Expert)
-The single best tour found by the classical workers in Stage 1 is handed off to an LLM agent (gpt-3.5-turbo). The LLM is prompted with the tour, the city coordinates, and context on TSP heuristics (like uncrossing paths via 2-opt). Its task is to analyze the tour and propose a refinement based on this high-level guidance.
+The single best tour from Stage 1 is handed off to an LLM agent. The LLM is prompted with the tour and context on TSP heuristics. Its task is to analyze the tour and propose a refinement based on this high-level guidance.
 
-This architecture allows us to measure the value added by the LLM when it attempts to improve upon the work of a powerful, specialized algorithm.
+This architecture allows us to measure the value added by different LLMs when they attempt to improve upon the work of a powerful, specialized algorithm.
 
 ## Getting Started
 
-Follow these steps to set up and run the benchmark on your own machine.
-
 ### 1. Installation
 
-First, clone the repository and navigate into the project directory.
+First, clone the repository and set up a Python virtual environment.
 
 ```bash
 git clone git@github.com:lbrichards/agentic_tsp.git
 cd agentic_tsp
-```
-
-Next, it is highly recommended to create and activate a Python virtual environment.
-
-```bash
-# Create the virtual environment
 python -m venv venv
-
-# Activate it (on macOS/Linux)
 source venv/bin/activate
-
-# Or on Windows
-# venv\Scripts\activate
-```
-
-Finally, install the required dependencies.
-
-```bash
 pip install -r requirements.txt
 ```
 
 ### 2. API Key Configuration
 
-The system requires an OpenAI API key to communicate with the LLM agent. The project uses a `.env` file to manage this key securely.
-
-A helper script is provided to set this up. Run the following command and you will be prompted to paste your API key:
+The system requires an OpenAI API key. A helper script is provided to set this up securely. Run the following command and you will be prompted to paste your API key:
 
 ```bash
 python src/setup_env.py
 ```
 
-This will create a `.env` file in the project root. This file is explicitly ignored by `.gitignore` and should never be committed to version control.
+This creates a `.env` file that is ignored by Git and should never be committed.
 
-### 3. Running the Benchmark
+## Usage: Running Experiments via CLI
 
-With the setup complete, you can run the full benchmark experiment with a single command:
+The project includes a command-line interface (`main_cli.py`) for flexible experimentation.
+
+### Help Menu
+
+To see all available options, run:
 
 ```bash
-python -m src.agentic_tsp.main
+python -m src.agentic_tsp.main_cli --help
 ```
 
-The script will execute 5 full runs of the hybrid orchestration process. It will print the progress of each run and conclude with a final, aggregated benchmark report.
+### Common Examples
 
-## Empirical Results: The Benchmark
+```bash
+# High-performance run with 40 workers and the default gpt-4o model
+python -m src.agentic_tsp.main_cli --workers 40 --runs 1
 
-The primary goal of this repository is to establish a clear, unequivocal benchmark for this specific collaborative pattern. The following report was generated by running the system as configured.
+# Quick test run
+python -m src.agentic_tsp.main_cli --runs 1
 
-### Token-Based LLM Collaboration Benchmark Report
+# Compare a different LLM (e.g., gpt-3.5-turbo)
+python -m src.agentic_tsp.main_cli --llm-model gpt-3.5-turbo
 
-**Benchmark:** berlin52 (Optimal Length: 7542.00)  
-**Total Benchmark Iterations:** 5  
-**Workers per Iteration:** 10  
+# Run the classical algorithm only, skipping the LLM refinement
+python -m src.agentic_tsp.main_cli --no-llm
 
-#### Performance Statistics (lower is better)
+# A fully custom configuration
+python -m src.agentic_tsp.main_cli --workers 20 --runs 10 --generations 2000
+```
 
-|                    | Classical GA | LLM-Refined |
-|--------------------|-------------|-------------|
-| Average Tour Length | 8026.85    | 8041.81     |
-| Best Tour Length   | 7904.52     | 7904.52     |
-| Std Dev of Length  | 87.87       | 92.11       |
+## Empirical Results: A Tale of Two Benchmarks
 
-#### Cost Statistics
-**Average Computation Time per Run:** 25.49 seconds
+Our experiments reveal that the value of LLM collaboration is not absolute. It is a function of both the LLM's inherent capability and the quality of the problem state it is given.
 
-## Conclusion
+### Benchmark A: The Baseline with a Standard LLM
 
-The results provide a clear benchmark. The classical Genetic Algorithm consistently found a highly optimized solution, on average reaching within ~6.5% of the known optimum.
+This benchmark used a moderate number of classical workers and a standard, cost-effective LLM.
 
-In this configuration, the LLM agent—prompted with a 2-opt heuristic via a natural language channel—did not reliably improve upon this already strong baseline. The final average tour length was slightly higher, as was the solution variance. This establishes a robust performance baseline for this collaborative architecture.
+**Configuration:** 10 GA Workers, gpt-3.5-turbo model.
 
-## Contributing
+**Result:** The LLM agent did not reliably improve upon the already strong baseline provided by the classical algorithms.
 
-This framework is designed for experimentation. Feel free to fork the repository and explore modifications:
+|                    | Classical GA | LLM-Refined (gpt-3.5-turbo) |
+|--------------------|-------------|------------------------------|
+| Average Tour Length | 8026.85    | 8041.81                      |
+| Best Tour Length   | 7904.52     | 7904.52                      |
 
-- Try different LLMs (e.g., gpt-4o, claude-3-opus).
-- Engineer more advanced prompts in `src/agentic_tsp/llm_worker.py`.
-- Tune the Genetic Algorithm parameters in `src/agentic_tsp/orchestrator.py`.
+### Benchmark B: High-Performance Collaboration
+
+This benchmark scaled up the classical compute and used a state-of-the-art LLM.
+
+**Configuration:** 40 GA Workers, gpt-4o model.
+
+**Result:** A significant and measurable improvement was achieved. The more capable LLM was able to identify a sophisticated refinement that the classical algorithms had missed, improving the tour by 94.65 units.
+
+| Result                   | Distance    | from Optimal |
+|--------------------------|-------------|--------------|
+| Best Classical GA Tour   | 7788.74     | 3.3%        |
+| LLM-Refined Tour (gpt-4o)| 7694.09     | 2.0%        |
+
+## Key Takeaway
+
+A token-based, natural-language collaboration between algorithms and AI agents can be effective, but success is not guaranteed. Its value is highly dependent on:
+
+1. **The Reasoning Power of the LLM:** More capable models like gpt-4o can find valuable improvements where less advanced models cannot.
+
+2. **The Quality of the Input:** Providing the LLM with a highly optimized starting point (achieved here by scaling to 40 workers) allows it to focus on complex, final-stage refinements.
+
+This framework provides a robust tool for further research into these dynamic collaborations.
 
 ## License
 
