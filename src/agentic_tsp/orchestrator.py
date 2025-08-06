@@ -11,14 +11,19 @@ async def run_orchestration(distance_matrix: List[List[float]], num_workers: int
     then aggregates the results to find the best one.
     """
     # Create macro calls for each worker, potentially with different seeds
+    import os
+    generations = int(os.getenv('TSP_GA_GENERATIONS', '1500'))
+    population_size = int(os.getenv('TSP_GA_POPULATION', '100'))
+    mutation_rate = float(os.getenv('TSP_GA_MUTATION', '0.05'))
+    
     calls = [
         MacroCall(
             algorithm="GA_TSP",
             distance_matrix=distance_matrix,
             parameters={
-                "generations": 1500,  # Let's give it a bit more time to run
-                "population_size": 100,
-                "mutation_rate": 0.05  # Use the higher rate as the *initial* rate
+                "generations": generations,
+                "population_size": population_size,
+                "mutation_rate": mutation_rate
             },
             seed=i
         ) for i in range(num_workers)
@@ -44,10 +49,15 @@ async def run_hybrid_orchestration(distance_matrix: List[List[float]], cities: L
     classical_best_result = await run_orchestration(distance_matrix, num_workers)
     
     # --- Stage 2: LLM Refinement ---
-    print("\n--- Stage 2: Handing off best tour to LLM for refinement ---")
-    candidate_tour = classical_best_result.best_tour
-    
-    # This is a synchronous call, but we wrap it for consistency
-    llm_improved_tour = await asyncio.to_thread(llm_improve_tour, candidate_tour, cities)
+    import os
+    if os.getenv('TSP_NO_LLM', '0') == '1':
+        print("\n--- Stage 2: LLM Refinement (SKIPPED) ---")
+        llm_improved_tour = classical_best_result.best_tour
+    else:
+        print("\n--- Stage 2: Handing off best tour to LLM for refinement ---")
+        candidate_tour = classical_best_result.best_tour
+        
+        # This is a synchronous call, but we wrap it for consistency
+        llm_improved_tour = await asyncio.to_thread(llm_improve_tour, candidate_tour, cities)
     
     return classical_best_result, llm_improved_tour

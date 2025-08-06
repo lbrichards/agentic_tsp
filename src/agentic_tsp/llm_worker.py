@@ -55,8 +55,11 @@ def llm_improve_tour(tour: List[int], cities: List[Tuple[float, float]]) -> List
     print("\n--- Sending tour to LLM for improvement... ---")
     
     try:
+        import os
+        model = os.getenv('TSP_LLM_MODEL', 'gpt-4o')
+        
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=model,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.3,
             response_format={"type": "json_object"}

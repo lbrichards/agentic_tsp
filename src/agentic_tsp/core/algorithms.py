@@ -119,6 +119,8 @@ class GeneticAlgorithmTSP:
             if current_best_length < best_tour_length:
                 best_tour = current_best_tour
                 best_tour_length = current_best_length
-                print(f"Generation {generation}: New best tour length: {best_tour_length:.2f}")
+                # Only print every 100 generations or significant improvements (>5% better)
+                if generation % 100 == 0 or (best_tour_length > 0 and (1 - current_best_length/best_tour_length) > 0.05):
+                    print(f"Worker {self.seed}: Generation {generation}: New best: {best_tour_length:.2f}")
 
         return best_tour, best_tour_length
